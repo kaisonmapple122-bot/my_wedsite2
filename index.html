@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="lo">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ແບບທົດສອບຄຳສັບພາສາຈີນ HSK1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Lao:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans Lao', sans-serif;
+        }
+        .hanzi-character {
+            font-family: 'Noto Sans SC', sans-serif; /* A good font for Chinese characters */
+            font-size: 6rem; /* 96px */
+            font-weight: 600;
+        }
+        .btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        /* Custom styles for correct/incorrect answers */
+        .correct-answer {
+            background-color: #10B981 !important; /* Tailwind green-500 */
+            color: white !important;
+            border-color: #059669 !important;
+        }
+        .incorrect-answer {
+            background-color: #EF4444 !important; /* Tailwind red-500 */
+            color: white !important;
+            border-color: #DC2626 !important;
+        }
+        .disabled-option {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
+
+    <div id="app" class="w-full max-w-2xl mx-auto">
+        
+        <!-- Quiz View -->
+        <div id="quiz-view" class="bg-white rounded-2xl shadow-xl p-6 md:p-8 text-center">
+            <p id="progress-counter" class="text-slate-500 mb-4 font-medium">ຄຳທີ 1 / 150</p>
+            
+            <div class="relative">
+                <h1 id="hanzi-display" class="hanzi-character text-slate-800 mb-4">...</h1>
+                <button id="speak-button" class="absolute top-2 right-2 bg-slate-200 text-slate-600 rounded-full w-10 h-10 flex items-center justify-center hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                </button>
+            </div>
+            
+            <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
+                <!-- Options will be generated here -->
+            </div>
+
+            <div id="feedback-container" class="hidden text-left bg-slate-50 p-4 rounded-lg mt-6">
+                <div id="feedback-result" class="text-xl font-bold mb-2"></div>
+                <p class="text-lg"><strong class="font-semibold text-slate-700">Pinyin:</strong> <span id="pinyin-display" class="text-sky-600"></span></p>
+                <p class="text-lg"><strong class="font-semibold text-slate-700">ຄຳແປ:</strong> <span id="translation-display" class="text-green-600"></span></p>
+                <div class="mt-3 pt-3 border-t">
+                    <p class="font-semibold text-slate-700">ຕົວຢ່າງປະໂຫຍກ:</p>
+                    <p id="example-hanzi" class="text-lg text-slate-800"></p>
+                    <p id="example-pinyin" class="text-slate-500 italic"></p>
+                    <p id="example-lao" class="text-slate-600"></p>
+                </div>
+            </div>
+
+            <button id="next-button" class="hidden mt-6 w-full md:w-auto md:px-10 py-3 bg-sky-500 text-white font-bold rounded-lg shadow-md hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 btn">
+                ຄຳຕໍ່ໄປ
+            </button>
+        </div>
+
+        <!-- Summary View -->
+        <div id="summary-view" class="hidden bg-white rounded-2xl shadow-xl p-6 md:p-8 text-center">
+            <h2 class="text-3xl font-bold text-slate-800 mb-2">🎯 ຈົບການທົດສອບ!</h2>
+            <div class="text-lg space-y-2 my-6 text-slate-600">
+                <p>✅ <span class="font-semibold">ຖືກທັງໝົດ:</span> <span id="correct-count">0</span> ຄຳ</p>
+                <p>❌ <span class="font-semibold">ຜິດທັງໝົດ:</span> <span id="incorrect-count">0</span> ຄຳ</p>
+                <p class="text-2xl font-bold text-slate-800 mt-4">🔢 <span class="font-semibold">ຄະແນນລວມ:</span> <span id="total-score">0 / 150</span></p>
+            </div>
+            <div class="flex flex-wrap justify-center gap-3 mt-8">
+                <button id="show-correct-btn" class="py-2 px-4 bg-green-100 text-green-800 font-semibold rounded-lg btn">ເບິ່ງຄຳທີ່ຕອບຖືກ</button>
+                <button id="show-incorrect-btn" class="py-2 px-4 bg-red-100 text-red-800 font-semibold rounded-lg btn">ເບິ່ງຄຳທີ່ຕອບຜິດ</button>
+                <button id="restart-btn" class="w-full sm:w-auto py-3 px-8 bg-sky-500 text-white font-bold rounded-lg shadow-md hover:bg-sky-600 btn">ຫຼິ້ນອີກຄັ້ງ</button>
+            </div>
+             <button id="show-last-result-btn" class="hidden mt-4 text-sm text-slate-500 hover:text-sky-600">ເບິ່ງຜົນລັບຄັ້ງຫຼ້າສຸດ</button>
+        </div>
+
+        <!-- Results List View -->
+        <div id="results-list-view" class="hidden bg-white rounded-2xl shadow-xl p-6 md:p-8 mt-4">
+             <div class="flex justify-between items-center mb-4">
+                <h3 id="results-title" class="text-2xl font-bold text-slate-800">ລາຍການຄຳສັບ</h3>
+                <button id="back-to-summary-btn" class="text-slate-500 hover:text-slate-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div id="results-list-content" class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                <!-- Results list will be generated here -->
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const vocabulary = [
+            { hanzi: '爱', pinyin: 'ài', lao: 'ຮັກ', example: { hanzi: '我爱你。', pinyin: 'Wǒ ài nǐ.', lao: 'ຂ້ອຍຮັກເຈົ້າ.' } },
+            { hanzi: '八', pinyin: 'bā', lao: 'ແປດ', example: { hanzi: '他八岁了。', pinyin: 'Tā bā suì le.', lao: 'ລາວອາຍຸແປດປີແລ້ວ.' } },
+            { hanzi: '爸爸', pinyin: 'bàba', lao: 'ພໍ່', example: { hanzi: '我爸爸是医生。', pinyin: 'Wǒ bàba shì yīshēng.', lao: 'ພໍ່ຂອງຂ້ອຍເປັນທ່ານໝໍ.' } },
+            { hanzi: '杯子', pinyin: 'bēizi', lao: 'ຈອກ', example: { hanzi: '杯子里有水。', pinyin: 'Bēizi lǐ yǒu shuǐ.', lao: 'ໃນຈອກມີນ້ຳ.' } },
+            { hanzi: '北京', pinyin: 'Běijīng', lao: 'ປັກກິ່ງ', example: { hanzi: '我住在北京。', pinyin: 'Wǒ zhù zài Běijīng.', lao: 'ຂ້ອຍອາໄສຢູ່ປັກກິ່ງ.' } },
+            { hanzi: '本', pinyin: 'běn', lao: 'ຫົວ (ລັກສະນະນາມ)', example: { hanzi: '这是一本书。', pinyin: 'Zhè shì yī běn shū.', lao: 'ນີ້ແມ່ນປຶ້ມຫົວໜຶ່ງ.' } },
+            { hanzi: '不客气', pinyin: 'bú kèqi', lao: 'ບໍ່ເປັນຫຍັງ', example: { hanzi: 'A: 谢谢你！ B: 不客气。', pinyin: 'A: Xièxiè nǐ! B: Bú kèqi.', lao: 'A: ຂອບໃຈ! B: ບໍ່ເປັນຫຍັງ.' } },
+            { hanzi: '不', pinyin: 'bù', lao: 'ບໍ່', example: { hanzi: '我不是学生。', pinyin: 'Wǒ bú shì xuéshēng.', lao: 'ຂ້ອຍບໍ່ແມ່ນນັກຮຽນ.' } },
+            { hanzi: '菜', pinyin: 'cài', lao: 'ອາຫານ, ຜັກ', example: { hanzi: '我喜欢吃中国菜。', pinyin: 'Wǒ xǐhuān chī Zhōngguó cài.', lao: 'ຂ້ອຍມັກກິນອາຫານຈີນ.' } },
+            { hanzi: '茶', pinyin: 'chá', lao: 'ຊາ', example: { hanzi: '请喝杯茶。', pinyin: 'Qǐng hē bēi chá.', lao: 'ເຊີນດື່ມຊາຈອກໜຶ່ງ.' } },
+            { hanzi: '吃', pinyin: 'chī', lao: 'ກິນ', example: { hanzi: '你想吃什么？', pinyin: 'Nǐ xiǎng chī shénme?', lao: 'ເຈົ້າຢາກກິນຫຍັງ?' } },
+            { hanzi: '出租车', pinyin: 'chūzūchē', lao: 'ລົດແທັກຊີ', example: { hanzi: '我们坐出租车去火车站。', pinyin: 'Wǒmen zuò chūzūchē qù huǒchēzhàn.', lao: 'ພວກເຮົານັ່ງລົດແທັກຊີໄປສະຖານີລົດໄຟ.' } },
+            { hanzi: '打电话', pinyin: 'dǎ diànhuà', lao: 'ໂທລະສັບ, ໂທຫາ', example: { hanzi: '我在打电话。', pinyin: 'Wǒ zài dǎ diànhuà.', lao: 'ຂ້ອຍກຳລັງໂທລະສັບຢູ່.' } },
+            { hanzi: '大', pinyin: 'dà', lao: 'ໃຫຍ່', example: { hanzi: '这个苹果很大。', pinyin: 'Zhège píngguǒ hěn dà.', lao: 'ໝາກແອັບເປີ້ນໜ່ວຍນີ້ໃຫຍ່ຫຼາຍ.' } },
+            { hanzi: '的', pinyin: 'de', lao: 'ຂອງ', example: { hanzi: '这是我的书。', pinyin: 'Zhè shì wǒ de shū.', lao: 'ນີ້ແມ່ນປຶ້ມຂອງຂ້ອຍ.' } },
+            { hanzi: '点', pinyin: 'diǎn', lao: 'ໂມງ, ຈຸດ', example: { hanzi: '现在是下午三点。', pinyin: 'Xiànzài shì xiàwǔ sān diǎn.', lao: 'ຕອນນີ້ແມ່ນບ່າຍສາມໂມງ.' } },
+            { hanzi: '电脑', pinyin: 'diànnǎo', lao: 'ຄອມພິວເຕີ', example: { hanzi: '我每天用电脑工作。', pinyin: 'Wǒ měitiān yòng diànnǎo gōngzuò.', lao: 'ຂ້ອຍໃຊ້ຄອມພິວເຕີເຮັດວຽກທຸກມື້.' } },
+            { hanzi: '电视', pinyin: 'diànshì', lao: 'ໂທລະທັດ', example: { hanzi: '妈妈在看电视。', pinyin: 'Māma zài kàn diànshì.', lao: 'ແມ່ກຳລັງເບິ່ງໂທລະທັດ.' } },
+            { hanzi: '电影', pinyin: 'diànyǐng', lao: 'ໜັງ', example: { hanzi: '你喜欢看电影吗？', pinyin: 'Nǐ xǐhuān kàn diànyǐng ma?', lao: 'ເຈົ້າມັກເບິ່ງຮູບເງົາບໍ່?' } },
+            { hanzi: '东西', pinyin: 'dōngxi', lao: 'ເຄື່ອງ, ສິ່ງຂອງ', example: { hanzi: '商店里有很多东西。', pinyin: 'Shāngdiàn lǐ yǒu hěn duō dōngxi.', lao: 'ໃນຮ້ານຄ້າມີສິ່ງຂອງຫຼາຍຢ່າງ.' } },
+            { hanzi: '都', pinyin: 'dōu', lao: 'ທັງໝົດ', example: { hanzi: '我们都是学生。', pinyin: 'Wǒmen dōu shì xuéshēng.', lao: 'ພວກເຮົາທັງໝົດແມ່ນນັກຮຽນ.' } },
+            { hanzi: '读', pinyin: 'dú', lao: 'ອ່ານ', example: { hanzi: '你会读这个汉字吗？', pinyin: 'Nǐ huì dú zhège Hànzì ma?', lao: 'ເຈົ້າອ່ານຕົວອັກສອນຈີນໂຕນີ້ໄດ້ບໍ່?' } },
+            { hanzi: '对不起', pinyin: 'duìbuqǐ', lao: 'ຂໍໂທດ', example: { hanzi: 'A: 对不起。 B: 没关系。', pinyin: 'A: Duìbuqǐ. B: Méi guānxi.', lao: 'A: ຂໍໂທດ. B: ບໍ່ເປັນຫຍັງ.' } },
+            { hanzi: '多', pinyin: 'duō', lao: 'ຫຼາຍ', example: { hanzi: '这里的人很多。', pinyin: 'Zhèlǐ de rén hěn duō.', lao: 'ຢູ່ທີ່ນີ້ມີຄົນຫຼາຍ.' } },
+            { hanzi: '多少', pinyin: 'duōshao', lao: 'ເທົ່າໃດ', example: { hanzi: '这个杯子多少钱？', pinyin: 'Zhège bēizi duōshao qián?', lao: 'ຈອກໜ່ວຍນີ້ລາຄາເທົ່າໃດ?' } },
+            { hanzi: '儿子', pinyin: 'érzi', lao: 'ລູກຊາຍ', example: { hanzi: '我儿子今年五岁。', pinyin: 'Wǒ érzi jīnnián wǔ suì.', lao: 'ລູກຊາຍຂອງຂ້ອຍປີນີ້ອາຍຸຫ້າປີ.' } },
+            { hanzi: '二', pinyin: 'èr', lao: 'ສອງ', example: { hanzi: '现在是二月。', pinyin: 'Xiànzài shì èr yuè.', lao: 'ຕອນນີ້ແມ່ນເດືອນກຸມພາ.' } },
+            { hanzi: '饭馆', pinyin: 'fànguǎn', lao: 'ຮ້ານອາຫານ', example: { hanzi: '中午我们去饭馆吃。', pinyin: 'Zhōngwǔ wǒmen qù fànguǎn chī.', lao: 'ຕອນສວາຍພວກເຮົາໄປກິນເຂົ້າຢູ່ຮ້ານອາຫານ.' } },
+            { hanzi: '飞机', pinyin: 'fēijī', lao: 'ຍົນ', example: { hanzi: '我坐飞机去中国。', pinyin: 'Wǒ zuò fēijī qù Zhōngguó.', lao: 'ຂ້ອຍນັ່ງຍົນໄປປະເທດຈີນ.' } },
+            { hanzi: '分钟', pinyin: 'fēnzhōng', lao: 'ນາທີ', example: { hanzi: '请等我几分钟。', pinyin: 'Qǐng děng wǒ jǐ fēnzhōng.', lao: 'ກະລຸນາຖ້າຂ້ອຍສອງສາມນາທີ.' } },
+            { hanzi: '高兴', pinyin: 'gāoxìng', lao: 'ດີໃຈ', example: { hanzi: '认识你很高兴。', pinyin: 'Rènshi nǐ hěn gāoxìng.', lao: 'ຍິນດີທີ່ໄດ້ຮູ້ຈັກ.' } },
+            { hanzi: '个', pinyin: 'gè', lao: 'ອັນ, ຄົນ (ລັກສະນະນາມ)', example: { hanzi: '我是一个学生。', pinyin: 'Wǒ shì yí ge xuéshēng.', lao: 'ຂ້ອຍແມ່ນນັກຮຽນຄົນໜຶ່ງ.' } },
+            { hanzi: '工作', pinyin: 'gōngzuò', lao: 'ວຽກ, ເຮັດວຽກ', example: { hanzi: '你在哪儿工作？', pinyin: 'Nǐ zài nǎr gōngzuò?', lao: 'ເຈົ້າເຮັດວຽກຢູ່ໃສ?' } },
+            { hanzi: '狗', pinyin: 'gǒu', lao: 'ໝາ', example: { hanzi: '我家有一只小狗。', pinyin: 'Wǒ jiā yǒu yì zhī xiǎo gǒu.', lao: 'ເຮືອນຂອງຂ້ອຍມີໝານ້ອຍໂຕໜຶ່ງ.' } },
+            { hanzi: '汉语', pinyin: 'Hànyǔ', lao: 'ພາສາຈີນ', example: { hanzi: '她会说汉语。', pinyin: 'Tā huì shuō Hànyǔ.', lao: 'ລາວເວົ້າພາສາຈີນໄດ້.' } },
+            { hanzi: '好', pinyin: 'hǎo', lao: 'ດີ', example: { hanzi: '今天天气很好。', pinyin: 'Jīntiān tiānqì hěn hǎo.', lao: 'ມື້ນີ້ອາກາດດີຫຼາຍ.' } },
+            { hanzi: '喝', pinyin: 'hē', lao: 'ດື່ມ', example: { hanzi: '你想喝点儿什么？', pinyin: 'Nǐ xiǎng hē diǎnr shénme?', lao: 'ເຈົ້າຢາກດື່ມຫຍັງບໍ່?' } },
+            { hanzi: '和', pinyin: 'hé', lao: 'ແລະ, ກັບ', example: { hanzi: '我喜欢猫和狗。', pinyin: 'Wǒ xǐhuān māo hé gǒu.', lao: 'ຂ້ອຍມັກແມວ ແລະ ໝາ.' } },
+            { hanzi: '很', pinyin: 'hěn', lao: 'ຫຼາຍ', example: { hanzi: '我很好，谢谢。', pinyin: 'Wǒ hěn hǎo, xièxie.', lao: 'ຂ້ອຍສະບາຍດີ, ຂອບໃຈ.' } },
+            { hanzi: '后面', pinyin: 'hòumiàn', lao: 'ທາງຫຼັງ', example: { hanzi: '商店在学校后面。', pinyin: 'Shāngdiàn zài xuéxiào hòumiàn.', lao: 'ຮ້ານຄ້າຢູ່ທາງຫຼັງໂຮງຮຽນ.' } },
+            { hanzi: '回', pinyin: 'huí', lao: 'ກັບ', example: { hanzi: '你什么时候回家？', pinyin: 'Nǐ shénme shíhou huí jiā?', lao: 'ເຈົ້າຈະກັບເຮືອນເມື່ອໃດ?' } },
+            { hanzi: '会', pinyin: 'huì', lao: 'ສາມາດ, ເປັນ', example: { hanzi: '我会开车。', pinyin: 'Wǒ huì kāi chē.', lao: 'ຂ້ອຍຂັບລົດເປັນ.' } },
+            { hanzi: '火车站', pinyin: 'huǒchēzhàn', lao: 'ສະຖານີລົດໄຟ', example: { hanzi: '请问，去火车站怎么走？', pinyin: 'Qǐngwèn, qù huǒchēzhàn zěnme zǒu?', lao: 'ຂໍຖາມແດ່, ໄປສະຖານີລົດໄຟໄປທາງໃດ?' } },
+            { hanzi: '几', pinyin: 'jǐ', lao: 'ຈັກ, ສອງສາມ', example: { hanzi: '现在几点了？', pinyin: 'Xiànzài jǐ diǎn le?', lao: 'ຕອນນີ້ຈັກໂມງແລ້ວ?' } },
+            { hanzi: '家', pinyin: 'jiā', lao: 'ເຮືອນ, ຄອບຄົວ', example: { hanzi: '我家有四口人。', pinyin: 'Wǒ jiā yǒu sì kǒu rén.', lao: 'ຄອບຄົວຂອງຂ້ອຍມີສີ່ຄົນ.' } },
+            { hanzi: '叫', pinyin: 'jiào', lao: 'ຊື່, ຮ້ອງ', example: { hanzi: '你叫什么名字？', pinyin: 'Nǐ jiào shénme míngzi?', lao: 'ເຈົ້າຊື່ຫຍັງ?' } },
+            { hanzi: '今天', pinyin: 'jīntiān', lao: 'ມື້ນີ້', example: { hanzi: '今天星期三。', pinyin: 'Jīntiān xīngqīsān.', lao: 'ມື້ນີ້ແມ່ນວັນພຸດ.' } },
+            { hanzi: '九', pinyin: 'jiǔ', lao: 'ເກົ້າ', example: { hanzi: '他有九本书。', pinyin: 'Tā yǒu jiǔ běn shū.', lao: 'ລາວມີປຶ້ມເກົ້າຫົວ.' } },
+            { hanzi: '开', pinyin: 'kāi', lao: 'ເປີດ, ຂັບ', example: { hanzi: '请开门。', pinyin: 'Qǐng kāi mén.', lao: 'ກະລຸນາເປີດປະຕູ.' } },
+            { hanzi: '看', pinyin: 'kàn', lao: 'ເບິ່ງ', example: { hanzi: '你在看什么？', pinyin: 'Nǐ zài kàn shénme?', lao: 'ເຈົ້າກຳລັງເບິ່ງຫຍັງຢູ່?' } },
+            { hanzi: '看见', pinyin: 'kànjiàn', lao: 'ໄດ້ພົບ, ໄດ້ເຫັນ', example: { hanzi: '我看见他了。', pinyin: 'Wǒ kànjiàn tā le.', lao: 'ຂ້ອຍໄດ້ເຫັນລາວແລ້ວ.' } },
+            { hanzi: '块', pinyin: 'kuài', lao: 'ກ້ອນ, ສໍາລັບເງິນຕາ, ຢວນ', example: { hanzi: '这本书三十块钱。', pinyin: 'Zhè běn shū sānshí kuài qián.', lao: 'ປຶ້ມຫົວນີ້ລາຄາສາມສິບຢວນ.' } },
+            { hanzi: '来', pinyin: 'lái', lao: 'ມາ', example: { hanzi: '他明天会来。', pinyin: 'Tā míngtiān huì lái.', lao: 'ມື້ອື່ນລາວຈະມາ.' } },
+            { hanzi: '老师', pinyin: 'lǎoshī', lao: 'ອາຈານ, ຄູ', example: { hanzi: '他是我们的汉语老师。', pinyin: 'Tā shì wǒmen de Hànyǔ lǎoshī.', lao: 'ລາວແມ່ນຄູສອນພາສາຈີນຂອງພວກເຮົາ.' } },
+            { hanzi: '了', pinyin: 'le', lao: 'ແລ້ວ', example: { hanzi: '我吃饭了。', pinyin: 'Wǒ chī fàn le.', lao: 'ຂ້ອຍກິນເຂົ້າແລ້ວ.' } },
+            { hanzi: '冷', pinyin: 'lěng', lao: 'ໜາວ', example: { hanzi: '今天有点儿冷。', pinyin: 'Jīntiān yǒudiǎnr lěng.', lao: 'ມື້ນີ້ໜາວໜ້ອຍໜຶ່ງ.' } },
+            { hanzi: '里', pinyin: 'lǐ', lao: 'ໃນ', example: { hanzi: '学校里有很多学生。', pinyin: 'Xuéxiào lǐ yǒu hěn duō xuéshēng.', lao: 'ໃນໂຮງຮຽນມີນັກຮຽນຫຼາຍຄົນ.' } },
+            { hanzi: '零', pinyin: 'líng', lao: 'ສູນ', example: { hanzi: '今年是二零二三年。', pinyin: 'Jīnnián shì èr líng èr sān nián.', lao: 'ປີນີ້ແມ່ນປີສອງພັນຊາວສາມ.' } },
+            { hanzi: '六', pinyin: 'liù', lao: 'ຫົກ', example: { hanzi: '桌子上有六个苹果。', pinyin: 'Zhuōzi shàng yǒu liù ge píngguǒ.', lao: 'ເທິງໂຕະມີໝາກແອັບເປີ້ນຫົກໜ່ວຍ.' } },
+            { hanzi: '妈妈', pinyin: 'māma', lao: 'ແມ່', example: { hanzi: '我妈妈是老师。', pinyin: 'Wǒ māma shì lǎoshī.', lao: 'ແມ່ຂອງຂ້ອຍເປັນຄູ.' } },
+            { hanzi: '吗', pinyin: 'ma', lao: 'ບໍ່, ບໍ (ຄຳຖາມ)', example: { hanzi: '你是学生吗？', pinyin: 'Nǐ shì xuéshēng ma?', lao: 'ເຈົ້າແມ່ນນັກຮຽນບໍ່?' } },
+            { hanzi: '买', pinyin: 'mǎi', lao: 'ຊື້', example: { hanzi: '我想买一个杯子。', pinyin: 'Wǒ xiǎng mǎi yí ge bēizi.', lao: 'ຂ້ອຍຢາກຊື້ຈອກໜ່ວຍໜຶ່ງ.' } },
+            { hanzi: '猫', pinyin: 'māo', lao: 'ແມວ', example: { hanzi: '那只猫很可爱。', pinyin: 'Nà zhī māo hěn kě\'ài.', lao: 'ແມວໂຕນັ້ນໜ້າຮັກຫຼາຍ.' } },
+            { hanzi: '没', pinyin: 'méi', lao: 'ບໍ່ມີ, ບໍ່ໄດ້', example: { hanzi: '我没钱。', pinyin: 'Wǒ méi qián.', lao: 'ຂ້ອຍບໍ່ມີເງິນ.' } },
+            { hanzi: '没关系', pinyin: 'méi guānxi', lao: 'ບໍ່ເປັນຫຍັງ', example: { hanzi: 'A: 对不起。 B: 没关系。', pinyin: 'A: Duìbuqǐ. B: Méi guānxi.', lao: 'A: ຂໍໂທດ. B: ບໍ່ເປັນຫຍັງ.' } },
+            { hanzi: '米饭', pinyin: 'mǐfàn', lao: 'ເຂົ້າ', example: { hanzi: '我喜欢吃米饭。', pinyin: 'Wǒ xǐhuān chī mǐfàn.', lao: 'ຂ້ອຍມັກກິນເຂົ້າ.' } },
+            { hanzi: '明天', pinyin: 'míngtiān', lao: 'ມື້ອື່ນ', example: { hanzi: '明天见！', pinyin: 'Míngtiān jiàn!', lao: 'ພົບກັນມື້ອື່ນ!' } },
+            { hanzi: '名字', pinyin: 'míngzi', lao: 'ຊື່', example: { hanzi: '你叫什么名字？', pinyin: 'Nǐ jiào shénme míngzi?', lao: 'ເຈົ້າຊື່ຫຍັງ?' } },
+            { hanzi: '哪', pinyin: 'nǎ', lao: 'ໃດ', example: { hanzi: '你是哪国人？', pinyin: 'Nǐ shì nǎ guó rén?', lao: 'ເຈົ້າເປັນຄົນປະເທດໃດ?' } },
+            { hanzi: '那', pinyin: 'nà', lao: 'ນັ້ນ', example: { hanzi: '那是什么？', pinyin: 'Nà shì shénme?', lao: 'ນັ້ນແມ່ນຫຍັງ?' } },
+            { hanzi: '呢', pinyin: 'ne', lao: 'ເດ, ລະ', example: { hanzi: '我很好，你呢？', pinyin: 'Wǒ hěn hǎo, nǐ ne?', lao: 'ຂ້ອຍສະບາຍດີ, ແລ້ວເຈົ້າເດ?' } },
+            { hanzi: '能', pinyin: 'néng', lao: 'ສາມາດ, ໄດ້', example: { hanzi: '我能坐在这儿吗？', pinyin: 'Wǒ néng zuò zài zhèr ma?', lao: 'ຂ້ອຍນັ່ງຢູ່ບ່ອນນີ້ໄດ້ບໍ່?' } },
+            { hanzi: '你', pinyin: 'nǐ', lao: 'ເຈົ້າ', example: { hanzi: '你好！', pinyin: 'Nǐ hǎo!', lao: 'ສະບາຍດີ!' } },
+            { hanzi: '年', pinyin: 'nián', lao: 'ປີ', example: { hanzi: '你在中国住了几年？', pinyin: 'Nǐ zài Zhōngguó zhù le jǐ nián?', lao: 'ເຈົ້າອາໄສຢູ່ຈີນຈັກປີແລ້ວ?' } },
+            { hanzi: '女儿', pinyin: 'nǚ\'ér', lao: 'ລູກສາວ', example: { hanzi: '她有两个女儿。', pinyin: 'Tā yǒu liǎng ge nǚ\'ér.', lao: 'ລາວມີລູກສາວສອງຄົນ.' } },
+            { hanzi: '朋友', pinyin: 'péngyou', lao: 'ໝູ່', example: { hanzi: '他是我最好的朋友。', pinyin: 'Tā shì wǒ zuì hǎo de péngyou.', lao: 'ລາວແມ່ນໝູ່ທີ່ດີທີ່ສຸດຂອງຂ້ອຍ.' } },
+            { hanzi: '漂亮', pinyin: 'piàoliang', lao: 'ງາມ', example: { hanzi: '你的衣服很漂亮。', pinyin: 'Nǐ de yīfu hěn piàoliang.', lao: 'ເຄື່ອງນຸ່ງຂອງເຈົ້າງາມຫຼາຍ.' } },
+            { hanzi: '苹果', pinyin: 'píngguǒ', lao: 'ໝາກແອັບເປີ້ນ', example: { hanzi: '你想吃苹果吗？', pinyin: 'Nǐ xiǎng chī píngguǒ ma?', lao: 'ເຈົ້າຢາກກິນໝາກແອັບເປີ້ນບໍ່?' } },
+            { hanzi: '七', pinyin: 'qī', lao: 'ເຈັດ', example: { hanzi: '一个星期有七天。', pinyin: 'Yí ge xīngqī yǒu qī tiān.', lao: 'ໜຶ່ງອາທິດມີເຈັດວັນ.' } },
+            { hanzi: '钱', pinyin: 'qián', lao: 'ເງິນ', example: { hanzi: '你有钱吗？', pinyin: 'Nǐ yǒu qián ma?', lao: 'ເຈົ້າມີເງິນບໍ່?' } },
+            { hanzi: '前面', pinyin: 'qiánmiàn', lao: 'ທາງໜ້າ', example: { hanzi: '银行在前面。', pinyin: 'Yínháng zài qiánmiàn.', lao: 'ທະນາຄານຢູ່ທາງໜ້າ.' } },
+            { hanzi: '请', pinyin: 'qǐng', lao: 'ເຊີນ, ກະລຸນາ', example: { hanzi: '请坐。', pinyin: 'Qǐng zuò.', lao: 'ເຊີນນັ່ງ.' } },
+            { hanzi: '去', pinyin: 'qù', lao: 'ໄປ', example: { hanzi: '你明天去哪儿？', pinyin: 'Nǐ míngtiān qù nǎr?', lao: 'ມື້ອື່ນເຈົ້າຈະໄປໃສ?' } },
+            { hanzi: '热', pinyin: 'rè', lao: 'ຮ້ອນ', example: { hanzi: '今天天气很热。', pinyin: 'Jīntiān tiānqì hěn rè.', lao: 'ມື້ນີ້ອາກາດຮ້ອນຫຼາຍ.' } },
+            { hanzi: '人', pinyin: 'rén', lao: 'ຄົນ', example: { hanzi: '他是一个好人。', pinyin: 'Tā shì yí ge hǎo rén.', lao: 'ລາວເປັນຄົນດີ.' } },
+            { hanzi: '认识', pinyin: 'rènshi', lao: 'ຮູ້ຈັກ', example: { hanzi: '你认识他吗？', pinyin: 'Nǐ rènshi tā ma?', lao: 'ເຈົ້າຮູ້ຈັກລາວບໍ່?' } },
+            { hanzi: '日', pinyin: 'rì', lao: 'ວັນ, ຕາເວັນ', example: { hanzi: '今天是十月一日。', pinyin: 'Jīntiān shì shí yuè yī rì.', lao: 'ມື້ນີ້ແມ່ນວັນທີໜຶ່ງເດືອນຕຸລາ.' } },
+            { hanzi: '三', pinyin: 'sān', lao: 'ສາມ', example: { hanzi: '我有三个苹果。', pinyin: 'Wǒ yǒu sān ge píngguǒ.', lao: 'ຂ້ອຍມີໝາກແອັບເປີ້ນສາມໜ່ວຍ.' } },
+            { hanzi: '商店', pinyin: 'shāngdiàn', lao: 'ຮ້ານຄ້າ', example: { hanzi: '我想去商店买东西。', pinyin: 'Wǒ xiǎng qù shāngdiàn mǎi dōngxi.', lao: 'ຂ້ອຍຢາກໄປຮ້ານຄ້າເພື່ອຊື້ຂອງ.' } },
+            { hanzi: '上', pinyin: 'shàng', lao: 'ເທິງ, ຂຶ້ນ', example: { hanzi: '书在桌子上。', pinyin: 'Shū zài zhuōzi shàng.', lao: 'ປຶ້ມຢູ່ເທິງໂຕະ.' } },
+            { hanzi: '上午', pinyin: 'shàngwǔ', lao: 'ຕອນເຊົ້າ', example: { hanzi: '我上午有课。', pinyin: 'Wǒ shàngwǔ yǒu kè.', lao: 'ຂ້ອຍມີຮຽນຕອນເຊົ້າ.' } },
+            { hanzi: '少', pinyin: 'shǎo', lao: 'ໜ້ອຍ', example: { hanzi: '杯子里的水很少。', pinyin: 'Bēizi lǐ de shuǐ hěn shǎo.', lao: 'ນ້ຳໃນຈອກມີໜ້ອຍຫຼາຍ.' } },
+            { hanzi: '谁', pinyin: 'shéi', lao: 'ໃຜ', example: { hanzi: '那个人是谁？', pinyin: 'Nàge rén shì shéi?', lao: 'ຄົນນັ້ນແມ່ນໃຜ?' } },
+            { hanzi: '什么', pinyin: 'shénme', lao: 'ຫຍັງ', example: { hanzi: '这是什么？', pinyin: 'Zhè shì shénme?', lao: 'ນີ້ແມ່ນຫຍັງ?' } },
+            { hanzi: '十', pinyin: 'shí', lao: 'ສິບ', example: { hanzi: '他今年十岁。', pinyin: 'Tā jīnnián shí suì.', lao: 'ປີນີ້ລາວອາຍຸສິບປີ.' } },
+            { hanzi: '时候', pinyin: 'shíhou', lao: 'ຕອນ, ເວລາ', example: { hanzi: '你什么时候来？', pinyin: 'Nǐ shénme shíhou lái?', lao: 'ເຈົ້າຈະມາຕອນໃດ?' } },
+            { hanzi: '是', pinyin: 'shì', lao: 'ແມ່ນ', example: { hanzi: '我是老师。', pinyin: 'Wǒ shì lǎoshī.', lao: 'ຂ້ອຍແມ່ນຄູ.' } },
+            { hanzi: '书', pinyin: 'shū', lao: 'ປຶ້ມ', example: { hanzi: '你喜欢看书吗？', pinyin: 'Nǐ xǐhuān kàn shū ma?', lao: 'ເຈົ້າມັກອ່ານປຶ້ມບໍ່?' } },
+            { hanzi: '水', pinyin: 'shuǐ', lao: 'ນ້ຳ', example: { hanzi: '我想喝水。', pinyin: 'Wǒ xiǎng hē shuǐ.', lao: 'ຂ້ອຍຢາກດື່ມນ້ຳ.' } },
+            { hanzi: '水果', pinyin: 'shuǐguǒ', lao: 'ໝາກໄມ້', example: { hanzi: '多吃水果对身体好。', pinyin: 'Duō chī shuǐguǒ duì shēntǐ hǎo.', lao: 'ກິນໝາກໄມ້ຫຼາຍໆດີຕໍ່ສຸຂະພາບ.' } },
+            { hanzi: '睡觉', pinyin: 'shuìjiào', lao: 'ນອນ', example: { hanzi: '现在太晚了，去睡觉吧。', pinyin: 'Xiànzài tài wǎn le, qù shuìjiào ba.', lao: 'ຕອນນີ້ເດິກແລ້ວ, ໄປນອນສາ.' } },
+            { hanzi: '说话', pinyin: 'shuōhuà', lao: 'ເວົ້າ', example: { hanzi: '请不要说话。', pinyin: 'Qǐng búyào shuōhuà.', lao: 'ກະລຸນາຢ່າເວົ້າ.' } },
+            { hanzi: '四', pinyin: 'sì', lao: 'ສີ່', example: { hanzi: '一年有四个季节。', pinyin: 'Yì nián yǒu sì ge jìjié.', lao: 'ໜຶ່ງປີມີສີ່ລະດູ.' } },
+            { hanzi: '岁', pinyin: 'suì', lao: 'ປີ (ອາຍຸ)', example: { hanzi: '你儿子几岁了？', pinyin: 'Nǐ érzi jǐ suì le?', lao: 'ລູກຊາຍເຈົ້າອາຍຸຈັກປີແລ້ວ?' } },
+            { hanzi: '他', pinyin: 'tā', lao: 'ລາວ (ຜູ້ຊາຍ)', example: { hanzi: '他是我的同学。', pinyin: 'Tā shì wǒ de tóngxué.', lao: 'ລາວແມ່ນໝູ່ຮ່ວມຫ້ອງຂອງຂ້ອຍ.' } },
+            { hanzi: '她', pinyin: 'tā', lao: 'ລາວ (ຜູ້ຍິງ)', example: { hanzi: '她是我的朋友。', pinyin: 'Tā shì wǒ de péngyou.', lao: 'ລາວແມ່ນໝູ່ຂອງຂ້ອຍ.' } },
+            { hanzi: '太', pinyin: 'tài', lao: 'ໂພດ', example: { hanzi: '这个太贵了。', pinyin: 'Zhège tài guì le.', lao: 'ອັນນີ້ແພງໂພດ.' } },
+            { hanzi: '天气', pinyin: 'tiānqì', lao: 'ອາກາດ', example: { hanzi: '今天天气怎么样？', pinyin: 'Jīntiān tiānqì zěnmeyàng?', lao: 'ມື້ນີ້ອາກາດເປັນແນວໃດ?' } },
+            { hanzi: '听', pinyin: 'tīng', lao: 'ຟັງ', example: { hanzi: '我喜欢听音乐。', pinyin: 'Wǒ xǐhuān tīng yīnyuè.', lao: 'ຂ້ອຍມັກຟັງເພງ.' } },
+            { hanzi: '同学', pinyin: 'tóngxué', lao: 'ໝູ່ຮ່ວມຫ້ອງ', example: { hanzi: '他们是我的同学。', pinyin: 'Tāmen shì wǒ de tóngxué.', lao: 'ພວກເຂົາແມ່ນໝູ່ຮ່ວມຫ້ອງຂອງຂ້ອຍ.' } },
+            { hanzi: '喂', pinyin: 'wèi', lao: 'ອາໂຫຼ', example: { hanzi: '喂，请问是王老师吗？', pinyin: 'Wèi, qǐngwèn shì Wáng lǎoshī ma?', lao: 'ອາໂຫຼ, ຂໍຖາມແດ່ແມ່ນອາຈານຫວັງບໍ່?' } },
+            { hanzi: '我', pinyin: 'wǒ', lao: 'ຂ້ອຍ', example: { hanzi: '我叫大卫。', pinyin: 'Wǒ jiào Dàwèi.', lao: 'ຂ້ອຍຊື່ເດວິດ.' } },
+            { hanzi: '我们', pinyin: 'wǒmen', lao: 'ພວກເຮົາ', example: { hanzi: '我们是好朋友。', pinyin: 'Wǒmen shì hǎo péngyou.', lao: 'ພວກເຮົາເປັນໝູ່ກັນ.' } },
+            { hanzi: '五', pinyin: 'wǔ', lao: 'ຫ້າ', example: { hanzi: '我有五支笔。', pinyin: 'Wǒ yǒu wǔ zhī bǐ.', lao: 'ຂ້ອຍມີປິກຫ້າກ້ານ.' } },
+            { hanzi: '喜欢', pinyin: 'xǐhuan', lao: 'ມັກ', example: { hanzi: '你喜欢喝咖啡吗？', pinyin: 'Nǐ xǐhuān hē kāfēi ma?', lao: 'ເຈົ້າມັກດື່ມກາເຟບໍ່?' } },
+            { hanzi: '下', pinyin: 'xià', lao: 'ລຸ່ມ, ລົງ, ຕໍ່ໄປ', example: { hanzi: '请在下一站下车。', pinyin: 'Qǐng zài xià yí zhàn xià chē.', lao: 'ກະລຸນາລົງລົດຢູ່ປ້າຍໜ້າ.' } },
+            { hanzi: '下午', pinyin: 'xiàwǔ', lao: 'ຕອນແລງ', example: { hanzi: '我下午三点开会。', pinyin: 'Wǒ xiàwǔ sān diǎn kāihuì.', lao: 'ຂ້ອຍມີປະຊຸມຕອນແລງສາມໂມງ.' } },
+            { hanzi: '下雨', pinyin: 'xià yǔ', lao: 'ຝົນຕົກ', example: { hanzi: '今天可能会下雨。', pinyin: 'Jīntiān kěnéng huì xià yǔ.', lao: 'ມື້ນີ້ຝົນອາດຈະຕົກ.' } },
+            { hanzi: '先生', pinyin: 'xiānsheng', lao: 'ທ່ານ (ຊາຍ)', example: { hanzi: '李先生在家吗？', pinyin: 'Lǐ xiānsheng zài jiā ma?', lao: 'ທ່ານຫຼີຢູ່ເຮືອນບໍ່?' } },
+            { hanzi: '现在', pinyin: 'xiànzài', lao: 'ດຽວນີ້', example: { hanzi: '现在几点了？', pinyin: 'Xiànzài jǐ diǎn le?', lao: 'ຕອນນີ້ຈັກໂມງແລ້ວ?' } },
+            { hanzi: '想', pinyin: 'xiǎng', lao: 'ຢາກ, ຄິດ, ຄິດຮອດ', example: { hanzi: '我想回家。', pinyin: 'Wǒ xiǎng huí jiā.', lao: 'ຂ້ອຍຢາກກັບເຮືອນ.' } },
+            { hanzi: '小', pinyin: 'xiǎo', lao: 'ນ້ອຍ', example: { hanzi: '这只小猫很可爱。', pinyin: 'Zhè zhī xiǎo māo hěn kě\'ài.', lao: 'ແມວນ້ອຍໂຕນີ້ໜ້າຮັກຫຼາຍ.' } },
+            { hanzi: '小姐', pinyin: 'xiǎojiě', lao: 'ນາງ', example: { hanzi: '王小姐，你好。', pinyin: 'Wáng xiǎojiě, nǐ hǎo.', lao: 'ສະບາຍດີ, ນາງຫວັງ.' } },
+            { hanzi: '些', pinyin: 'xiē', lao: 'ຈຳນວນໜຶ່ງ ຫຼື ເຫຼົ່າ', example: { hanzi: '我想买些水果。', pinyin: 'Wǒ xiǎng mǎi xiē shuǐguǒ.', lao: 'ຂ້ອຍຢາກຊື້ໝາກໄມ້ຈຳນວນໜຶ່ງ.' } },
+            { hanzi: '写', pinyin: 'xiě', lao: 'ຂຽນ', example: { hanzi: '你会写汉字吗？', pinyin: 'Nǐ huì xiě Hànzì ma?', lao: 'ເຈົ້າຂຽນຕົວອັກສອນຈີນເປັນບໍ່?' } },
+            { hanzi: '谢谢', pinyin: 'xièxie', lao: 'ຂອບໃຈ', example: { hanzi: 'A: 谢谢你！ B: 不客气。', pinyin: 'A: Xièxiè nǐ! B: Bú kèqi.', lao: 'A: ຂອບໃຈ! B: ບໍ່ເປັນຫຍັງ.' } },
+            { hanzi: '星期', pinyin: 'xīngqī', lao: 'ອາທິດ', example: { hanzi: '今天星期几？', pinyin: 'Jīntiān xīngqī jǐ?', lao: 'ມື້ນີ້ແມ່ນວັນຫຍັງ?' } },
+            { hanzi: '学生', pinyin: 'xuésheng', lao: 'ນັກຮຽນ', example: { hanzi: '我是一名学生。', pinyin: 'Wǒ shì yì míng xuésheng.', lao: 'ຂ້ອຍແມ່ນນັກຮຽນຄົນໜຶ່ງ.' } },
+            { hanzi: '学习', pinyin: 'xuéxí', lao: 'ຮຽນ', example: { hanzi: '我要努力学习汉语。', pinyin: 'Wǒ yào nǔlì xuéxí Hànyǔ.', lao: 'ຂ້ອຍຕ້ອງຕັ້ງໃຈຮຽນພາສາຈີນ.' } },
+            { hanzi: '学校', pinyin: 'xuéxiào', lao: 'ໂຮງຮຽນ', example: { hanzi: '这是我们的学校。', pinyin: 'Zhè shì wǒmen de xuéxiào.', lao: 'ນີ້ແມ່ນໂຮງຮຽນຂອງພວກເຮົາ.' } },
+            { hanzi: '一', pinyin: 'yī', lao: 'ໜຶ່ງ', example: { hanzi: '我只有一个哥哥。', pinyin: 'Wǒ zhǐ yǒu yí ge gēge.', lao: 'ຂ້ອຍມີອ້າຍພຽງຄົນດຽວ.' } },
+            { hanzi: '衣服', pinyin: 'yīfu', lao: 'ເຄື່ອງນຸ່ງ', example: { hanzi: '这件衣服很漂亮。', pinyin: 'Zhè jiàn yīfu hěn piàoliang.', lao: 'ເຄື່ອງນຸ່ງຊຸດນີ້ງາມຫຼາຍ.' } },
+            { hanzi: '医生', pinyin: 'yīshēng', lao: 'ທ່ານໝໍ', example: { hanzi: '他爸爸是医生。', pinyin: 'Tā bàba shì yīshēng.', lao: 'ພໍ່ຂອງລາວເປັນທ່ານໝໍ.' } },
+            { hanzi: '医院', pinyin: 'yīyuàn', lao: 'ໂຮງໝໍ', example: { hanzi: '他生病了，去了医院。', pinyin: 'Tā shēngbìng le, qù le yīyuàn.', lao: 'ລາວບໍ່ສະບາຍ, ໄປໂຮງໝໍແລ້ວ.' } },
+            { hanzi: '椅子', pinyin: 'yǐzi', lao: 'ຕັ່ງ', example: { hanzi: '请坐在这把椅子上。', pinyin: 'Qǐng zuò zài zhè bǎ yǐzi shàng.', lao: 'ກະລຸນານັ່ງເທິງຕັ່ງໂຕນີ້.' } },
+            { hanzi: '有', pinyin: 'yǒu', lao: 'ມີ', example: { hanzi: '你有什么问题吗？', pinyin: 'Nǐ yǒu shénme wèntí ma?', lao: 'ເຈົ້າມີຄຳຖາມຫຍັງບໍ່?' } },
+            { hanzi: '月', pinyin: 'yuè', lao: 'ເດືອນ, ດວງຈັນ', example: { hanzi: '今年有十二个月。', pinyin: 'Jīnnián yǒu shí\'èr ge yuè.', lao: 'ປີນີ້ມີສິບສອງເດືອນ.' } },
+            { hanzi: '在', pinyin: 'zài', lao: 'ຢູ່, ກຳລັງ', example: { hanzi: '你在哪儿？', pinyin: 'Nǐ zài nǎr?', lao: 'ເຈົ້າຢູ່ໃສ?' } },
+            { hanzi: '再见', pinyin: 'zàijiàn', lao: 'ລາກ່ອນ', example: { hanzi: '老师，再见！', pinyin: 'Lǎoshī, zàijiàn!', lao: 'ລາກ່ອນ, ອາຈານ!' } },
+            { hanzi: '怎么', pinyin: 'zěnme', lao: 'ແນວໃດ, ເປັນຫຍັງ', example: { hanzi: '这个字怎么读？', pinyin: 'Zhège zì zěnme dú?', lao: 'ຕົວອັກສອນນີ້ອ່ານແນວໃດ?' } },
+            { hanzi: '怎么样', pinyin: 'zěnmeyàng', lao: 'ເປັນແນວໃດ', example: { hanzi: '你最近怎么样？', pinyin: 'Nǐ zuìjìn zěnmeyàng?', lao: 'ຊ່ວງນີ້ເຈົ້າເປັນແນວໃດ?' } },
+            { hanzi: '这', pinyin: 'zhè', lao: 'ນີ້', example: { hanzi: '这是什么？', pinyin: 'Zhè shì shénme?', lao: 'ນີ້ແມ່ນຫຍັງ?' } },
+            { hanzi: '中国', pinyin: 'Zhōngguó', lao: 'ປະເທດຈີນ', example: { hanzi: '我爱中国。', pinyin: 'Wǒ ài Zhōngguó.', lao: 'ຂ້ອຍຮັກປະເທດຈີນ.' } },
+            { hanzi: '中午', pinyin: 'zhōngwǔ', lao: 'ຕອນສວາຍ', example: { hanzi: '你中午吃什么？', pinyin: 'Nǐ zhōngwǔ chī shénme?', lao: 'ຕອນສວາຍເຈົ້າກິນຫຍັງ?' } },
+            { hanzi: '住', pinyin: 'zhù', lao: 'ອາໄສຢູ່', example: { hanzi: '你住在哪里？', pinyin: 'Nǐ zhù zài nǎlǐ?', lao: 'ເຈົ້າອາໄສຢູ່ໃສ?' } },
+            { hanzi: '桌子', pinyin: 'zhuōzi', lao: 'ໂຕະ', example: { hanzi: '电脑在桌子上。', pinyin: 'Diànnǎo zài zhuōzi shàng.', lao: 'ຄອມພິວເຕີຢູ່ເທິງໂຕະ.' } },
+            { hanzi: '字', pinyin: 'zì', lao: 'ຕົວອັກສອນ', example: { hanzi: '这个字我不认识。', pinyin: 'Zhège zì wǒ bú rènshi.', lao: 'ຕົວອັກສອນນີ້ຂ້ອຍບໍ່ຮູ້ຈັກ.' } },
+            { hanzi: '昨天', pinyin: 'zuótiān', lao: 'ມື້ວານນີ້', example: { hanzi: '他昨天没来上课。', pinyin: 'Tā zuótiān méi lái shàngkè.', lao: 'ມື້ວານນີ້ລາວບໍ່ໄດ້ມາເຂົ້າຮຽນ.' } },
+            { hanzi: '坐', pinyin: 'zuò', lao: 'ນັ່ງ', example: { hanzi: '请坐。', pinyin: 'Qǐng zuò.', lao: 'ເຊີນນັ່ງ.' } },
+            { hanzi: '做', pinyin: 'zuò', lao: 'ເຮັດ', example: { hanzi: '你在做什么？', pinyin: 'Nǐ zài zuò shénme?', lao: 'ເຈົ້າກຳລັງເຮັດຫຍັງຢູ່?' } }
+        ];
+
+        // DOM Elements
+        const quizView = document.getElementById('quiz-view');
+        const summaryView = document.getElementById('summary-view');
+        const resultsListView = document.getElementById('results-list-view');
+        const progressCounter = document.getElementById('progress-counter');
+        const hanziDisplay = document.getElementById('hanzi-display');
+        const speakButton = document.getElementById('speak-button');
+        const optionsContainer = document.getElementById('options-container');
+        const feedbackContainer = document.getElementById('feedback-container');
+        const feedbackResult = document.getElementById('feedback-result');
+        const pinyinDisplay = document.getElementById('pinyin-display');
+        const translationDisplay = document.getElementById('translation-display');
+        const exampleHanzi = document.getElementById('example-hanzi');
+        const examplePinyin = document.getElementById('example-pinyin');
+        const exampleLao = document.getElementById('example-lao');
+        const nextButton = document.getElementById('next-button');
+        const showLastResultBtn = document.getElementById('show-last-result-btn');
+
+        // State variables
+        let quizWords = [];
+        let currentWordIndex = 0;
+        let score = 0;
+        let results = [];
+        const totalWords = vocabulary.length;
+        
+        // --- Utility Functions ---
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function speak(text) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'zh-CN';
+                utterance.rate = 0.9;
+                window.speechSynthesis.speak(utterance);
+            } else {
+                alert('ຂໍອະໄພ, ເບົາເຊີຂອງທ່ານບໍ່ຮອງຮັບການອ່ານອອກສຽງ');
+            }
+        }
+        
+        // --- Quiz Logic ---
+        function initializeQuiz() {
+            // Reset state
+            score = 0;
+            currentWordIndex = 0;
+            results = [];
+            quizWords = [...vocabulary];
+            shuffleArray(quizWords);
+
+            // Update UI
+            summaryView.classList.add('hidden');
+            resultsListView.classList.add('hidden');
+            quizView.classList.remove('hidden');
+            document.getElementById('app').classList.remove('mt-4'); // remove margin when quiz starts
+
+            displayNextWord();
+        }
+
+        function displayNextWord() {
+            if (currentWordIndex >= totalWords) {
+                showSummary();
+                return;
+            }
+
+            feedbackContainer.classList.add('hidden');
+            nextButton.classList.add('hidden');
+            optionsContainer.innerHTML = '';
+
+            const currentWord = quizWords[currentWordIndex];
+            progressCounter.textContent = `ຄຳທີ ${currentWordIndex + 1} / ${totalWords}`;
+            hanziDisplay.textContent = currentWord.hanzi;
+
+            // Generate choices
+            const correctLao = currentWord.lao;
+            let distractors = [];
+            while (distractors.length < 3) {
+                const randomWord = vocabulary[Math.floor(Math.random() * vocabulary.length)];
+                if (randomWord.lao !== correctLao && !distractors.includes(randomWord.lao)) {
+                    distractors.push(randomWord.lao);
+                }
+            }
+
+            const choices = [correctLao, ...distractors];
+            shuffleArray(choices);
+
+            choices.forEach(choice => {
+                const button = document.createElement('button');
+                button.textContent = choice;
+                button.className = "w-full text-left p-4 bg-white border-2 border-slate-200 rounded-lg text-slate-700 font-medium hover:bg-slate-50 hover:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500 btn";
+                button.onclick = () => handleAnswer(choice, correctLao);
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function handleAnswer(selectedAnswer, correctAnswer) {
+            const currentWord = quizWords[currentWordIndex];
+            const isCorrect = selectedAnswer === correctAnswer;
+
+            if (isCorrect) {
+                score++;
+                feedbackResult.textContent = '✅ ຖືກຕ້ອງ!';
+                feedbackResult.className = 'text-xl font-bold mb-2 text-green-600';
+            } else {
+                feedbackResult.textContent = '❌ ຜິດ';
+                feedbackResult.className = 'text-xl font-bold mb-2 text-red-600';
+            }
+
+            pinyinDisplay.textContent = currentWord.pinyin;
+            translationDisplay.textContent = currentWord.lao;
+            exampleHanzi.textContent = currentWord.example.hanzi;
+            examplePinyin.textContent = currentWord.example.pinyin;
+            exampleLao.textContent = currentWord.example.lao;
+
+            feedbackContainer.classList.remove('hidden');
+
+            // Visually update buttons
+            Array.from(optionsContainer.children).forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('disabled-option');
+                if (btn.textContent === correctAnswer) {
+                    btn.classList.add('correct-answer');
+                } else if (btn.textContent === selectedAnswer && !isCorrect) {
+                    btn.classList.add('incorrect-answer');
+                }
+            });
+
+            // Save result
+            results.push({
+                index: currentWordIndex,
+                word: currentWord.hanzi,
+                pinyin: currentWord.pinyin,
+                answer: currentWord.lao,
+                userAnswer: selectedAnswer,
+                correct: isCorrect
+            });
+
+            nextButton.classList.remove('hidden');
+        }
+        
+        function showSummary() {
+            quizView.classList.add('hidden');
+            summaryView.classList.remove('hidden');
+            
+            document.getElementById('correct-count').textContent = score;
+            document.getElementById('incorrect-count').textContent = totalWords - score;
+            document.getElementById('total-score').textContent = `${score} / ${totalWords}`;
+
+            // Save results to localStorage
+            try {
+                localStorage.setItem('chineseQuizLastResults', JSON.stringify(results));
+            } catch (e) {
+                console.error("Could not save results to localStorage:", e);
+            }
+        }
+
+        function displayResultsList(isCorrectList) {
+            const filteredResults = results.filter(r => r.correct === isCorrectList);
+            resultsListView.classList.remove('hidden');
+            summaryView.classList.add('hidden');
+
+            document.getElementById('app').classList.add('mt-4');
+
+            document.getElementById('results-title').textContent = isCorrectList ? 'ລາຍການຄຳທີ່ຕອບຖືກ' : 'ລາຍການຄຳທີ່ຕອບຜິດ';
+            
+            const contentEl = document.getElementById('results-list-content');
+            contentEl.innerHTML = '';
+
+            if (filteredResults.length === 0) {
+                contentEl.innerHTML = `<p class="text-slate-500">ບໍ່ມີລາຍການ</p>`;
+                return;
+            }
+
+            filteredResults.forEach(result => {
+                const item = document.createElement('div');
+                item.className = 'p-3 border rounded-lg flex items-center justify-between';
+                item.innerHTML = `
+                    <div>
+                        <div class="flex items-baseline">
+                            <p class="text-xl font-semibold text-slate-800">${result.word}</p>
+                            <p class="ml-3 text-slate-500">${result.pinyin}</p>
+                        </div>
+                        <p class="text-green-700">${result.answer}</p>
+                        ${!isCorrectList ? `<p class="text-sm text-red-600">ເຈົ້າຕອບ: ${result.userAnswer}</p>` : ''}
+                    </div>
+                    <button class="speak-result-btn bg-slate-200 text-slate-600 rounded-full w-8 h-8 flex items-center justify-center hover:bg-slate-300 flex-shrink-0" data-word="${result.word}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon></svg>
+                    </button>
+                `;
+                contentEl.appendChild(item);
+            });
+        }
+        
+        // --- Event Listeners ---
+        speakButton.addEventListener('click', () => {
+            speak(hanziDisplay.textContent);
+        });
+
+        nextButton.addEventListener('click', () => {
+            currentWordIndex++;
+            displayNextWord();
+        });
+
+        document.getElementById('restart-btn').addEventListener('click', initializeQuiz);
+        
+        document.getElementById('show-correct-btn').addEventListener('click', () => displayResultsList(true));
+        
+        document.getElementById('show-incorrect-btn').addEventListener('click', () => displayResultsList(false));
+        
+        document.getElementById('back-to-summary-btn').addEventListener('click', () => {
+            resultsListView.classList.add('hidden');
+            summaryView.classList.remove('hidden');
+            document.getElementById('app').classList.remove('mt-4');
+        });
+
+        document.getElementById('results-list-content').addEventListener('click', (e) => {
+             const button = e.target.closest('.speak-result-btn');
+             if (button) {
+                 speak(button.dataset.word);
+             }
+        });
+        
+        showLastResultBtn.addEventListener('click', () => {
+             const lastResults = JSON.parse(localStorage.getItem('chineseQuizLastResults'));
+             if (lastResults) {
+                results = lastResults; // Load last results into current state
+                const lastScore = results.filter(r => r.correct).length;
+                score = lastScore; // update score
+                showSummary();
+             }
+        });
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('chineseQuizLastResults')) {
+                showLastResultBtn.classList.remove('hidden');
+            }
+            initializeQuiz();
+        });
+
+    </script>
+</body>
+</html>
+
